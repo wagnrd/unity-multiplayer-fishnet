@@ -3,11 +3,12 @@ using FishNet.Connection;
 using UnityEngine;
 using FishNet.Serializing;
 using FishNet.Transporting;
-using FishNet.Managing.Logging;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using FishNet.Utility.Performance;
 using System;
+using FishNet.Managing.Object;
+using FishNet.Component.Ownership;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -18,8 +19,15 @@ namespace FishNet.Object
     public sealed partial class NetworkObject : MonoBehaviour
     {
         #region Public.
+        /// <summary>
+        /// True if was nested during scene setup or within a prefab.
+        /// </summary>
         [field: SerializeField, HideInInspector]
         public bool IsNested { get; private set; }
+        /// <summary>
+        /// NetworkConnection which predicted spawned this object.
+        /// </summary>
+        public NetworkConnection PredictedSpawner { get; private set; } = NetworkManager.EmptyConnection;
         /// <summary>
         /// True if this NetworkObject was active during edit. Will be true if placed in scene during edit, and was in active state on run.
         /// </summary>
@@ -30,8 +38,6 @@ namespace FishNet.Object
         /// </summary>
         /// <returns></returns>
         public bool IsSceneObject => (SceneId > 0);
-        [Obsolete("Use IsSceneObject instead.")] //Remove on 2023/01/01
-        public bool SceneObject => IsSceneObject;
         /// <summary>
         /// ComponentIndex for this NetworkBehaviour.
         /// </summary>
@@ -45,6 +51,11 @@ namespace FishNet.Object
         /// True if this NetworkObject is deinitializing. Will also be true until Initialize is called. May be false until the object is cleaned up if object is destroyed without using Despawn.
         /// </summary>
         internal bool IsDeinitializing { get; private set; } = true;
+        /// <summary>
+        /// PredictedSpawn component on this object. Will be null if not added manually.
+        /// </summary>
+        [field: SerializeField, HideInInspector]
+        public PredictedSpawn PredictedSpawn { get; private set; }
         /// <summary>
         /// 
         /// </summary>
@@ -63,6 +74,7 @@ namespace FishNet.Object
         /// </summary>
         [field: SerializeField, HideInInspector]
         public NetworkObject ParentNetworkObject { get; private set; }
+        /// <summary>
         /// NetworkObjects nested beneath this one. Recursive NetworkObjects may exist within each entry of this field.
         /// </summary> 
         [field: SerializeField, HideInInspector]
@@ -81,12 +93,6 @@ namespace FishNet.Object
 
         #region Serialized.
         /// <summary>
-        /// 
-        /// </summary>
-        [Tooltip("True if the object will always initialize as a networked object. When false the object will not automatically initialize over the network. Using Spawn() on an object will always set that instance as networked.")]
-        [SerializeField]
-        private bool _isNetworked = true;
-        /// <summary>
         /// True if the object will always initialize as a networked object. When false the object will not automatically initialize over the network. Using Spawn() on an object will always set that instance as networked.
         /// </summary>
         public bool IsNetworked
@@ -102,12 +108,9 @@ namespace FishNet.Object
         {
             IsNetworked = value;
         }
-        /// <summary>
-        /// 
-        /// </summary>
-        [Tooltip("True to make this object global, and added to the DontDestroyOnLoad scene. This value may only be set for instantiated objects, and can be changed if done immediately after instantiating.")]
+        [Tooltip("True if the object will always initialize as a networked object. When false the object will not automatically initialize over the network. Using Spawn() on an object will always set that instance as networked.")]
         [SerializeField]
-        private bool _isGlobal;
+        private bool _isNetworked = true;
         /// <summary>
         /// True to make this object global, and added to the DontDestroyOnLoad scene. This value may only be set for instantiated objects, and can be changed if done immediately after instantiating.
         /// </summary>
@@ -125,6 +128,7 @@ namespace FishNet.Object
             if (IsNested)
             {
                 NetworkManager.StaticLogWarning($"Object {gameObject.name} cannot change IsGlobal because it is nested. Only root objects may be set global.");
+                return;
             }
             if (!IsDeinitializing)
             {
@@ -140,7 +144,16 @@ namespace FishNet.Object
             _networkObserverInitiliazed = false;
             IsGlobal = value;
         }
-
+        [Tooltip("True to make this object global, and added to the DontDestroyOnLoad scene. This value may only be set for instantiated objects, and can be changed if done immediately after instantiating.")]
+        [SerializeField]
+        private bool _isGlobal;
+        /// <summary>
+        /// Order to initialize this object's callbacks when spawned with other NetworkObjects in the same tick. Default value is 0, negative values will execute callbacks first.
+        /// </summary>
+        public sbyte GetInitializeOrder() => _initializeOrder;
+        [Tooltip("Order to initialize this object's callbacks when spawned with other NetworkObjects in the same tick. Default value is 0, negative values will execute callbacks first.")]
+        [SerializeField]
+        private sbyte _initializeOrder = 0;
         /// <summary>
         /// How to handle this object when it despawns. Scene objects are never destroyed when despawning.
         /// </summary>
@@ -166,6 +179,17 @@ namespace FishNet.Object
         /// True if disabled NetworkBehaviours have been initialized.
         /// </summary>
         private bool _disabledNetworkBehavioursInitialized;
+        #endregion
+
+        #region Const.
+        /// <summary>
+        /// Value used when the ObjectId has not been set.
+        /// </summary>
+        public const int UNSET_OBJECTID_VALUE = ushort.MaxValue;
+        /// <summary>
+        /// Value used when the PrefabId has not been set.
+        /// </summary>
+        public const int UNSET_PREFABID_VALUE = ushort.MaxValue;
         #endregion
 
         #region Editor Debug.
@@ -348,7 +372,7 @@ namespace FishNet.Object
         /// </summary>
         /// <param name="networkManager"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void PreinitializeInternal(NetworkManager networkManager, int objectId, NetworkConnection owner, bool asServer)
+        internal void Preinitialize_Internal(NetworkManager networkManager, int objectId, NetworkConnection owner, bool asServer)
         {
             State = NetworkObjectState.Spawned;
             InitializeNetworkBehavioursIfDisabled();
@@ -361,6 +385,7 @@ namespace FishNet.Object
             TransportManager = networkManager.TransportManager;
             TimeManager = networkManager.TimeManager;
             SceneManager = networkManager.SceneManager;
+            PredictionManager = networkManager.PredictionManager;
             RollbackManager = networkManager.RollbackManager;
 
             SetOwner(owner);
@@ -373,7 +398,7 @@ namespace FishNet.Object
             AddDefaultNetworkObserverConditions();
 
             for (int i = 0; i < NetworkBehaviours.Length; i++)
-                NetworkBehaviours[i].InitializeOnceInternal();
+                NetworkBehaviours[i].InitializeOnce_Internal();
 
             /* NetworkObserver uses some information from
              * NetworkBehaviour so it must be preinitialized
@@ -434,6 +459,7 @@ namespace FishNet.Object
                 }
             }
 
+            PredictedSpawn = GetComponent<PredictedSpawn>();
             ComponentIndex = componentIndex;
             ParentNetworkObject = parentNob;
 
@@ -505,9 +531,10 @@ namespace FishNet.Object
         /// <summary>
         /// Called after all data is synchronized with this NetworkObject.
         /// </summary>
-        internal void Initialize(bool asServer)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void Initialize(bool asServer, bool invokeSyncTypeCallbacks)
         {
-            InitializeCallbacks(asServer);
+            InitializeCallbacks(asServer, invokeSyncTypeCallbacks);
         }
 
         /// <summary>
@@ -557,7 +584,7 @@ namespace FishNet.Object
             SceneManager = null;
             RollbackManager = null;
             //Misc sets.
-            ObjectId = -1;
+            ObjectId = 0;
             ClientInitialized = false;
         }
 
@@ -596,7 +623,7 @@ namespace FishNet.Object
                 if (newOwner == Owner && asServer)
                     return;
 
-                if (newOwner != null && newOwner.IsActive && !newOwner.LoadedStartScenes)
+                if (newOwner != null && newOwner.IsActive && !newOwner.LoadedStartScenes(true))
                 {
                     NetworkManager.LogWarning($"Ownership has been transfered to ConnectionId {newOwner.ClientId} but this is not recommended until after they have loaded start scenes. You can be notified when a connection loads start scenes by using connection.OnLoadedStartScenes on the connection, or SceneManager.OnClientLoadStartScenes.");
                 }
@@ -619,9 +646,10 @@ namespace FishNet.Object
             {
                 if (activeNewOwner)
                     newOwner.AddObject(this);
-                if (prevOwner.IsValid)
+                if (prevOwner.IsValid && prevOwner != newOwner)
                     prevOwner.RemoveObject(this);
             }
+
             //After changing owners invoke callbacks.
             InvokeOwnership(prevOwner, asServer);
 
@@ -654,6 +682,39 @@ namespace FishNet.Object
                 if (prevOwner.IsActive)
                     ServerManager.Objects.RebuildObservers(prevOwner);
             }
+        }
+
+
+        /// <summary>
+        /// Initializes a predicted object for client.
+        /// </summary>
+        internal void InitializePredictedObject_Server(NetworkConnection predictedSpawner)
+        {
+            PredictedSpawner = predictedSpawner;
+        }
+
+
+        /// <summary>
+        /// Initializes a predicted object for client.
+        /// </summary>
+        internal void PreinitializePredictedObject_Client(NetworkManager manager, int objectId, NetworkConnection owner, NetworkConnection predictedSpawner)
+        {
+            PredictedSpawner = predictedSpawner;
+            Preinitialize_Internal(manager, objectId, owner, false);
+        }
+
+        /// <summary>
+        /// Deinitializes this predicted spawned object.
+        /// </summary>
+        internal void DeinitializePredictedObject_Client()
+        {
+            /* For the time being we're just going to disable the object because
+             * deinitializing instead could present a lot of problems.
+             * For example: if client deinitializes rpc links are unregistered,
+             * and if server had a rpc on the way already the link would
+             * not be found. This would cause the reader length to be wrong
+             * resulting in packet corruption. */
+            gameObject.SetActive(false);
         }
 
         /// <summary>

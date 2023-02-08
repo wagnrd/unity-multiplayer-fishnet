@@ -2,8 +2,8 @@
 using FishNet.Connection;
 using FishNet.Managing;
 using FishNet.Managing.Client;
-using FishNet.Managing.Logging;
 using FishNet.Managing.Observing;
+using FishNet.Managing.Predicting;
 using FishNet.Managing.Scened;
 using FishNet.Managing.Server;
 using FishNet.Managing.Timing;
@@ -16,6 +16,14 @@ namespace FishNet.Object
     public sealed partial class NetworkObject : MonoBehaviour
     {
         #region Public.
+        /// <summary>
+        /// True if predicted spawning is allowed for this object.
+        /// </summary>
+        internal bool AllowPredictedSpawning => (PredictedSpawn == null) ? false : PredictedSpawn.GetAllowSpawning();        
+        /// <summary>
+        /// True if predicted spawning is allowed for this object.
+        /// </summary>
+        internal bool AllowPredictedDespawning => (PredictedSpawn == null) ? false : PredictedSpawn.GetAllowDespawning();
         /// <summary>
         /// True if this object has been initialized on the client side.
         /// This is set true right before client callbacks.
@@ -129,7 +137,7 @@ namespace FishNet.Object
         /// <summary>
         /// True if the object is initialized for the network.
         /// </summary>
-        public bool IsSpawned => (!IsDeinitializing && ObjectId >= 0);
+        public bool IsSpawned => (!IsDeinitializing && ObjectId != NetworkObject.UNSET_OBJECTID_VALUE);
         /// <summary>
         /// The local connection of the client calling this method.
         /// </summary>
@@ -162,6 +170,10 @@ namespace FishNet.Object
         /// SceneManager for this object.
         /// </summary>
         public SceneManager SceneManager { get; private set; }
+        /// <summary>
+        /// PredictionManager for this object.
+        /// </summary>
+        public PredictionManager PredictionManager {get;private set;}
         /// <summary>
         /// RollbackManager for this object.
         /// </summary>
@@ -199,7 +211,7 @@ namespace FishNet.Object
         /// <param name="despawnType">What happens to the object after being despawned.</param>
         public void Despawn(GameObject go, DespawnType? despawnType = null)
         {
-            NetworkManager.ServerManager.Despawn(go, despawnType);
+            NetworkManager?.ServerManager.Despawn(go, despawnType);
         }
         /// <summary>
         /// Despawns  a NetworkObject. Only call from the server.
@@ -208,7 +220,7 @@ namespace FishNet.Object
         /// <param name="despawnType">What happens to the object after being despawned.</param>
         public void Despawn(NetworkObject nob, DespawnType? despawnType = null)
         {
-            NetworkManager.ServerManager.Despawn(nob, despawnType);
+            NetworkManager?.ServerManager.Despawn(nob, despawnType);
         }
         /// <summary>
         /// Despawns this NetworkObject. Only call from the server.
@@ -217,50 +229,21 @@ namespace FishNet.Object
         public void Despawn(DespawnType? despawnType = null)
         {
             NetworkObject nob = this;
-            NetworkManager.ServerManager.Despawn(nob, despawnType);
+            NetworkManager?.ServerManager.Despawn(nob, despawnType);
         }
         /// <summary>
         /// Spawns an object over the network. Only call from the server.
         /// </summary>
         public void Spawn(GameObject go, NetworkConnection ownerConnection = null)
         {
-            if (!CanSpawnOrDespawn(true))
-                return;
-            NetworkManager.ServerManager.Spawn(go, ownerConnection);
+            NetworkManager?.ServerManager.Spawn(go, ownerConnection);
         }
         /// <summary>
         /// Spawns an object over the network. Only call from the server.
         /// </summary>
         public void Spawn(NetworkObject nob, NetworkConnection ownerConnection = null)
         {
-            if (!CanSpawnOrDespawn(true))
-                return;
-            NetworkManager.ServerManager.Spawn(nob, ownerConnection);
-        }
-
-        /// <summary>
-        /// Returns if Spawn or Despawn can be called.
-        /// </summary>
-        /// <param name="warn">True to warn if not able to execute spawn or despawn.</param>
-        /// <returns></returns>
-        internal bool CanSpawnOrDespawn(bool warn)
-        {
-            bool canExecute = true;
-
-            if (NetworkManager == null)
-            {
-                canExecute = false;
-                if (warn)
-                    NetworkManager.StaticLogWarning($"Cannot despawn {gameObject.name}, NetworkManager reference is null. This may occur if the object is not spawned or initialized.");
-            }
-            else if (IsDeinitializing)
-            {
-                canExecute = false;
-                if (warn)
-                    Debug.LogWarning($"Cannot despawn {gameObject.name}, it is already deinitializing.");
-            }
-
-            return canExecute;
+            NetworkManager?.ServerManager.Spawn(nob, ownerConnection);
         }
 
         /// <summary>

@@ -118,8 +118,10 @@ GameObject:
   - component: {fileID: 9218833783512527692}
   - component: {fileID: 6356353611193899526}
   - component: {fileID: 8691357478509665842}
+  - component: {fileID: 5827511718572203454}
   - component: {fileID: 7034406388442197149}
   - component: {fileID: 5571228123525801642}
+  - component: {fileID: 7929528041459761661}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -155,20 +157,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26b716c41e9b56b4baafaf13a523ba2e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  <IsNested>k__BackingField: 0
-  <ComponentIndex>k__BackingField: 0
-  _networkBehaviours: []
-  <ParentNetworkObject>k__BackingField: {fileID: 0}
-  <ChildNetworkObjects>k__BackingField: []
-  _isNetworked: 1
-  _isGlobal: 0
-  _defaultDespawnType: 0
   NetworkObserver: {fileID: 0}
-  <PrefabId>k__BackingField: -1
+  <PrefabId>k__BackingField: 65535
+  <SpawnableCollectionId>k__BackingField: 0
   _scenePathHash: 0
   <SceneId>k__BackingField: 0
   <AssetPathHash>k__BackingField: 17718468919283796007
   _sceneNetworkObjects: []
+  <IsNested>k__BackingField: 0
+  <ComponentIndex>k__BackingField: 0
+  <PredictedSpawn>k__BackingField: {fileID: 0}
+  _networkBehaviours:
+  - {fileID: 8691357478509665842}
+  - {fileID: 5827511718572203454}
+  - {fileID: 5571228123525801642}
+  <ParentNetworkObject>k__BackingField: {fileID: 0}
+  <ChildNetworkObjects>k__BackingField: []
+  _isNetworked: 1
+  _isGlobal: 0
+  _initializeOrder: 0
+  _defaultDespawnType: 0
 --- !u!114 &8691357478509665842
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -181,25 +189,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 402926ef33e0a894d9fec352693988ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _componentIndexCache: 255
+  _componentIndexCache: 0
   _addedNetworkObject: {fileID: 6356353611193899526}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 6356353611193899526}
   _graphicalObject: {fileID: 8736840682045003384}
   _enableTeleport: 0
   _teleportThreshold: 1
+  _ownerSmoothPosition: 1
+  _ownerSmoothRotation: 1
   _ownerInterpolation: 1
   _predictionType: 0
   _rigidbody: {fileID: 0}
   _rigidbody2d: {fileID: 0}
   _spectatorSmoothPosition: 1
   _spectatorSmoothRotation: 1
-  _spectatorSmoothingDuration: 0.025
   _spectatorInterpolation: 1
   _overflowMultiplier: 0.1
   _maintainedVelocity: 0
   _resendType: 0
   _resendInterval: 30
-  _networkTransform: {fileID: 0}
+  _networkTransform: {fileID: 5571228123525801642}
+--- !u!114 &5827511718572203454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3687400100070518943}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9b9a611cdb64956a730f23ce9b8ed10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _componentIndexCache: 1
+  _addedNetworkObject: {fileID: 6356353611193899526}
+  _networkObjectCache: {fileID: 6356353611193899526}
+  _moveSpeed: 5
+  _rotationSpeed: 0
 --- !u!143 &7034406388442197149
 CharacterController:
   m_ObjectHideFlags: 0
@@ -238,9 +264,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2836e36774ca1c4bbbee976e17b649c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _componentIndexCache: 255
+  _componentIndexCache: 2
   _addedNetworkObject: {fileID: 6356353611193899526}
-  _networkObjectCache: {fileID: 0}
+  _networkObjectCache: {fileID: 6356353611193899526}
   _synchronizeParent: 0
   _packing:
     Position: 1
@@ -268,3 +294,34 @@ MonoBehaviour:
     X: 0
     Y: 0
     Z: 0
+--- !u!114 &7929528041459761661
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3687400100070518943}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Actions: {fileID: -944628639613478452, guid: b484b5d6fa1166c54b5f79e5e4700949,
+    type: 3}
+  m_NotificationBehavior: 0
+  m_UIInputModule: {fileID: 0}
+  m_DeviceLostEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_DeviceRegainedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ControlsChangedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ActionEvents: []
+  m_NeverAutoSwitchControlSchemes: 0
+  m_DefaultControlScheme: 
+  m_DefaultActionMap: Player
+  m_SplitScreenIndex: -1
+  m_Camera: {fileID: 0}
