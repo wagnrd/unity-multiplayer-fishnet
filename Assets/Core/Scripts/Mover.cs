@@ -48,10 +48,15 @@ public class Mover : NetworkBehaviour
         if (IsServer)
         {
             Move(default, true);
+
+            if (TimeManager.Tick % 3 != 0)
+                return;
+
             var reconcileData = new ReconcileData
             {
                 Position = transform.position
             };
+
             Reconcile(reconcileData, true);
         }
     }
@@ -66,8 +71,9 @@ public class Mover : NetworkBehaviour
     [Replicate]
     private void Move(MoveData moveData, bool asServer, Channel channel = Channel.Unreliable, bool replaying = false)
     {
-        Debug.Log(moveData.Backward);
-        var movement = new Vector3(moveData.Left, 0, moveData.Backward) * (_moveSpeed * (float)TimeManager.TickDelta);
+        var tickDelta = (float)TimeManager.TickDelta;
+        var movementDirection = new Vector3(moveData.Left, 0, moveData.Backward).normalized;
+        var movement = movementDirection * (_moveSpeed * tickDelta);
         _characterController.Move(movement);
     }
 
