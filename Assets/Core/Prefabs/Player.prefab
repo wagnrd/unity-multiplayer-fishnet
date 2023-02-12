@@ -157,13 +157,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26b716c41e9b56b4baafaf13a523ba2e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  NetworkObserver: {fileID: 0}
-  <PrefabId>k__BackingField: 65535
-  <SpawnableCollectionId>k__BackingField: 0
-  _scenePathHash: 0
-  <SceneId>k__BackingField: 0
-  <AssetPathHash>k__BackingField: 17718468919283796007
-  _sceneNetworkObjects: []
   <IsNested>k__BackingField: 0
   <ComponentIndex>k__BackingField: 0
   <PredictedSpawn>k__BackingField: {fileID: 0}
@@ -177,6 +170,13 @@ MonoBehaviour:
   _isGlobal: 0
   _initializeOrder: 0
   _defaultDespawnType: 0
+  NetworkObserver: {fileID: 0}
+  <PrefabId>k__BackingField: 65535
+  <SpawnableCollectionId>k__BackingField: 0
+  _scenePathHash: 0
+  <SceneId>k__BackingField: 0
+  <AssetPathHash>k__BackingField: 17718468919283796007
+  _sceneNetworkObjects: []
 --- !u!114 &8691357478509665842
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -226,6 +226,9 @@ MonoBehaviour:
   _networkObjectCache: {fileID: 6356353611193899526}
   _moveSpeed: 5
   _rotationSpeed: 0
+  _gravity: 3
+  _maxFallSpeed: 6
+  _reconcileSkips: 2
 --- !u!143 &7034406388442197149
 CharacterController:
   m_ObjectHideFlags: 0

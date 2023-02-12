@@ -10,9 +10,10 @@ internal enum StartOption
 
 public class NetworkController : MonoBehaviour
 {
-    [Header("Development")]
-    [SerializeField] private StartOption _editorStartOption;
-    [SerializeField] private StartOption _standaloneStartOption;
+    [Header("Development")] [SerializeField]
+    private StartOption _editorStartOption = StartOption.Host;
+
+    [SerializeField] private StartOption _standaloneStartOption = StartOption.Client;
 
     private void Start()
     {
